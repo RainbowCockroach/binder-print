@@ -1,5 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
-import type { ContentPage } from '../types';
+import type { ContentPage, PageSide } from '../types';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -10,7 +10,12 @@ const generatePageId = (): string => {
   return `page-${++pageIdCounter}-${Date.now()}`;
 };
 
-export const processImage = async (file: File): Promise<ContentPage> => {
+// Helper to get alternating page side
+const getAlternatingPageSide = (index: number): PageSide => {
+  return index % 2 === 0 ? 'left' : 'right';
+};
+
+export const processImage = async (file: File, pageSide: PageSide): Promise<ContentPage> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -24,6 +29,7 @@ export const processImage = async (file: File): Promise<ContentPage> => {
           originalWidth: img.width,
           originalHeight: img.height,
           position: { x: 0, y: 0, scale: 1 },
+          pageSide,
         });
       };
       img.onerror = () => reject(new Error('Failed to load image'));
@@ -34,7 +40,7 @@ export const processImage = async (file: File): Promise<ContentPage> => {
   });
 };
 
-export const processPdf = async (file: File): Promise<ContentPage[]> => {
+export const processPdf = async (file: File, startIndex: number): Promise<ContentPage[]> => {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pages: ContentPage[] = [];
@@ -63,24 +69,31 @@ export const processPdf = async (file: File): Promise<ContentPage[]> => {
       originalWidth: viewport.width,
       originalHeight: viewport.height,
       position: { x: 0, y: 0, scale: 1 },
+      pageSide: getAlternatingPageSide(startIndex + i - 1),
     });
   }
 
   return pages;
 };
 
-export const processFiles = async (files: File[]): Promise<ContentPage[]> => {
+/**
+ * Process files and assign alternating page sides starting from startIndex
+ */
+export const processFiles = async (files: File[], startIndex: number = 0): Promise<ContentPage[]> => {
   const allPages: ContentPage[] = [];
+  let currentIndex = startIndex;
 
   for (const file of files) {
     const fileType = file.type.toLowerCase();
 
     if (fileType === 'application/pdf') {
-      const pdfPages = await processPdf(file);
+      const pdfPages = await processPdf(file, currentIndex);
       allPages.push(...pdfPages);
+      currentIndex += pdfPages.length;
     } else if (fileType.startsWith('image/')) {
-      const imagePage = await processImage(file);
+      const imagePage = await processImage(file, getAlternatingPageSide(currentIndex));
       allPages.push(imagePage);
+      currentIndex++;
     } else {
       console.warn(`Unsupported file type: ${fileType}`);
     }

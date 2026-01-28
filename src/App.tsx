@@ -3,7 +3,6 @@ import {
   FileUploader,
   BinderSelector,
   PaperSelector,
-  PageSideSelector,
   MarginToggle,
   ContentPositionEditor,
   PagePreview,
@@ -18,7 +17,6 @@ function App() {
   const [pages, setPages] = useState<ContentPage[]>([]);
   const [binderType, setBinderType] = useState<BinderType>('a5-20-hole');
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
-  const [pageSide, setPageSide] = useState<PageSide>('left');
   const [enablePadding, setEnablePadding] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -29,7 +27,8 @@ function App() {
   const handleFilesSelected = useCallback(async (files: File[]) => {
     setIsProcessing(true);
     try {
-      const newPages = await processFiles(files);
+      // Pass current page count so new pages continue the alternating pattern
+      const newPages = await processFiles(files, pages.length);
       setPages((prev) => [...prev, ...newPages]);
     } catch (error) {
       console.error('Error processing files:', error);
@@ -37,7 +36,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [pages.length]);
 
   // Handle page removal
   const handleRemovePage = useCallback((index: number) => {
@@ -64,6 +63,13 @@ function App() {
     [editingPageIndex]
   );
 
+  // Handle per-page side change
+  const handlePageSideChange = useCallback((index: number, pageSide: PageSide) => {
+    setPages((prev) =>
+      prev.map((page, i) => (i === index ? { ...page, pageSide } : page))
+    );
+  }, []);
+
   // Handle PDF generation
   const handleGenerate = useCallback(async () => {
     if (pages.length === 0) return;
@@ -74,7 +80,7 @@ function App() {
         pages,
         binderType,
         paperSize,
-        pageSide,
+        pageSide: 'left', // This is now unused but kept for type compatibility
         enablePadding,
       });
 
@@ -94,7 +100,7 @@ function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [pages, binderType, paperSize, pageSide, enablePadding]);
+  }, [pages, binderType, paperSize, enablePadding]);
 
   // Clear all pages
   const handleClearAll = useCallback(() => {
@@ -102,6 +108,9 @@ function App() {
     setSelectedPageIndex(null);
     setEditingPageIndex(null);
   }, []);
+
+  // Get current page for editor
+  const editingPage = editingPageIndex !== null ? pages[editingPageIndex] : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,8 +135,6 @@ function App() {
               <BinderSelector value={binderType} onChange={setBinderType} />
 
               <PaperSelector value={paperSize} onChange={setPaperSize} />
-
-              <PageSideSelector value={pageSide} onChange={setPageSide} />
 
               <MarginToggle value={enablePadding} onChange={setEnablePadding} />
             </div>
@@ -164,11 +171,11 @@ function App() {
                 pages={pages}
                 binderType={binderType}
                 paperSize={paperSize}
-                pageSide={pageSide}
                 enablePadding={enablePadding}
                 selectedIndex={selectedPageIndex}
                 onSelectPage={handleSelectPage}
                 onRemovePage={handleRemovePage}
+                onPageSideChange={handlePageSideChange}
               />
             </div>
           </div>
@@ -176,12 +183,12 @@ function App() {
       </main>
 
       {/* Position Editor Modal */}
-      {editingPageIndex !== null && pages[editingPageIndex] && (
+      {editingPage && (
         <ContentPositionEditor
-          page={pages[editingPageIndex]}
+          page={editingPage}
           binderType={binderType}
           paperSize={paperSize}
-          pageSide={pageSide}
+          pageSide={editingPage.pageSide}
           enablePadding={enablePadding}
           onPositionChange={handlePositionChange}
           onClose={() => {
