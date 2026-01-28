@@ -38,6 +38,8 @@ export interface ContentPage {
     y: number; // offset in mm (can be negative)
     scale: number; // scale factor (1 = 100%)
   };
+  // Page side for hole placement (left page has holes on right edge, right page has holes on left edge)
+  pageSide: PageSide;
 }
 
 export interface AppState {

@@ -6,11 +6,11 @@ interface PagePreviewProps {
   pages: ContentPage[];
   binderType: BinderType;
   paperSize: PaperSize;
-  pageSide: PageSide;
   enablePadding: boolean;
   selectedIndex: number | null;
   onSelectPage: (index: number) => void;
   onRemovePage: (index: number) => void;
+  onPageSideChange: (index: number, pageSide: PageSide) => void;
 }
 
 const THUMBNAIL_SCALE = 0.5; // Scale for thumbnails (pixels per mm)
@@ -19,20 +19,16 @@ export const PagePreview = ({
   pages,
   binderType,
   paperSize,
-  pageSide,
   enablePadding,
   selectedIndex,
   onSelectPage,
   onRemovePage,
+  onPageSideChange,
 }: PagePreviewProps) => {
-  const spec = BINDER_SPECS[binderType];
   const paper = PAPER_SIZES[paperSize];
 
   const thumbWidth = paper.width * THUMBNAIL_SCALE;
   const thumbHeight = paper.height * THUMBNAIL_SCALE;
-
-  // Check if 2-up mode
-  const is2Up = paperSize === 'A4' && spec.paperSize === 'A5' && pages.length > 1;
 
   if (pages.length === 0) {
     return (
@@ -48,7 +44,6 @@ export const PagePreview = ({
       <div className="flex items-center justify-between">
         <h3 className="font-medium text-gray-900">
           Pages ({pages.length})
-          {is2Up && <span className="text-sm text-gray-500 ml-2">(2-up mode)</span>}
         </h3>
       </div>
 
@@ -60,13 +55,13 @@ export const PagePreview = ({
             index={index}
             binderType={binderType}
             paperSize={paperSize}
-            pageSide={pageSide}
             enablePadding={enablePadding}
             isSelected={selectedIndex === index}
             thumbWidth={thumbWidth}
             thumbHeight={thumbHeight}
             onSelect={() => onSelectPage(index)}
             onRemove={() => onRemovePage(index)}
+            onPageSideChange={(pageSide) => onPageSideChange(index, pageSide)}
           />
         ))}
       </div>
@@ -79,13 +74,13 @@ interface PageThumbnailProps {
   index: number;
   binderType: BinderType;
   paperSize: PaperSize;
-  pageSide: PageSide;
   enablePadding: boolean;
   isSelected: boolean;
   thumbWidth: number;
   thumbHeight: number;
   onSelect: () => void;
   onRemove: () => void;
+  onPageSideChange: (pageSide: PageSide) => void;
 }
 
 const PageThumbnail = ({
@@ -93,17 +88,18 @@ const PageThumbnail = ({
   index,
   binderType,
   paperSize,
-  pageSide,
   enablePadding,
   isSelected,
   thumbWidth,
   thumbHeight,
   onSelect,
   onRemove,
+  onPageSideChange,
 }: PageThumbnailProps) => {
   const spec = BINDER_SPECS[binderType];
   const paper = PAPER_SIZES[paperSize];
   const binderPaper = PAPER_SIZES[spec.paperSize];
+  const pageSide = page.pageSide;
 
   const padding = enablePadding ? 5 : 0;
   const holeMargin = spec.edgeDistance + spec.holeDiameter / 2 + padding;
@@ -131,6 +127,37 @@ const PageThumbnail = ({
       {/* Page number badge */}
       <div className="absolute top-1 left-1 z-10 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
         {index + 1}
+      </div>
+
+      {/* Page side toggle */}
+      <div
+        className="absolute top-1 left-7 z-10 flex"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => onPageSideChange('left')}
+          className={`
+            px-1.5 py-0.5 text-xs font-medium rounded-l border transition-all
+            ${pageSide === 'left'
+              ? 'bg-blue-500 text-white border-blue-500'
+              : 'bg-white/80 text-gray-600 border-gray-300 hover:bg-gray-100'}
+          `}
+          title="Left page (holes on right)"
+        >
+          L
+        </button>
+        <button
+          onClick={() => onPageSideChange('right')}
+          className={`
+            px-1.5 py-0.5 text-xs font-medium rounded-r border-t border-r border-b transition-all
+            ${pageSide === 'right'
+              ? 'bg-blue-500 text-white border-blue-500'
+              : 'bg-white/80 text-gray-600 border-gray-300 hover:bg-gray-100'}
+          `}
+          title="Right page (holes on left)"
+        >
+          R
+        </button>
       </div>
 
       {/* Remove button */}
