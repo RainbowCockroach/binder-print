@@ -135,27 +135,11 @@ const drawContentPage = async (
   pageSide: PageSide,
   enablePadding: boolean
 ): Promise<void> => {
-  const spec = BINDER_SPECS[binderType];
   const paper = PAPER_SIZES[paperSize];
-  const binderPaper = PAPER_SIZES[spec.paperSize];
-
   const pageHeightPt = mmToPoints(paper.height);
 
-  // Calculate content area
+  // Calculate content area (includes centering offset for A5 on A4)
   const contentArea = getContentArea(binderType, paperSize, pageSide, enablePadding);
-
-  // Calculate position to center the binder page area on the paper
-  let areaX: number;
-  let areaY: number;
-
-  if (paperSize === spec.paperSize) {
-    areaX = 0;
-    areaY = 0;
-  } else {
-    // Center A5 on A4
-    areaX = (paper.width - binderPaper.width) / 2;
-    areaY = (paper.height - binderPaper.height) / 2;
-  }
 
   // Embed and draw the image
   const imageBytes = await fetch(contentPage.dataUrl).then((res) => res.arrayBuffer());
@@ -176,8 +160,9 @@ const drawContentPage = async (
   const scaledHeight = imgHeightMm * position.scale;
 
   // Position image within content area
-  const imgX = mmToPoints(areaX + contentArea.offsetX + position.x);
-  const imgY = mmToPoints(areaY + contentArea.offsetY + position.y);
+  // contentArea.offsetX/Y already include the centering offset for A5 on A4
+  const imgX = mmToPoints(contentArea.offsetX + position.x);
+  const imgY = mmToPoints(contentArea.offsetY + position.y);
 
   pdfPage.drawImage(image, {
     x: imgX,
