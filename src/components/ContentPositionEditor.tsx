@@ -39,9 +39,10 @@ export const ContentPositionEditor = ({
   const previewHeight = paper.height * PREVIEW_SCALE;
 
   // Content area in preview coordinates
+  // contentArea.offsetX/Y already include the centering offset for A5 on A4
   const contentAreaPreview = {
-    x: ((paper.width - binderPaper.width) / 2 + (pageSide === 'right' ? contentArea.offsetX : 0)) * PREVIEW_SCALE,
-    y: ((paper.height - binderPaper.height) / 2) * PREVIEW_SCALE,
+    x: contentArea.offsetX * PREVIEW_SCALE,
+    y: contentArea.offsetY * PREVIEW_SCALE,
     width: contentArea.width * PREVIEW_SCALE,
     height: contentArea.height * PREVIEW_SCALE,
   };
